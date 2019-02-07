@@ -1,0 +1,117 @@
+Steps followed to create the project:
+
+
+1.Created Amazon EC2 Instance(VM) from https://aws.amazon.com/
+2.During the process of step1, we get a unique public key which is required for VM access. Saved it as cloudapp.pem
+3.Below ssh command is used to connect to the EC2 Virtual Machine,ssh -i "cloudapp.pem" ubuntu@ec2-18-217-74-98.us-east-2.compute.amazonaws.com
+4.Used ubuntu instance, PHP and the following commands are used to connect the apache server in ubuntu instance:
+    (i) Install the apache2 using the following command 
+        sudo apt install apache2
+    (ii) Adjusting the firewall by checking the list of ufw application profiles
+        sudo ufw app list
+       O/P Available applications:
+  Apache
+  Apache Full
+  Apache Secure
+  OpenSSH
+ Apache Full profile, should show that it enables traffic to ports 80 and 443:
+ So select Apache Full application by using the following command:
+    sudo ufw allow in "Apache Full"
+(iii) Check if apache2 is working with the following command:
+      http://18.216.169.172  , 18.216.169.172 is my public ip address
+      
+   Installing PHP:
+   (i) Installation of PHP using the following command:
+        sudo apt install php libapache2-mod-php php-mysql
+If a user requests a directory from the server, Apache will first look for a file called index.html. We want to tell the web server to prefer PHP files over others, so make Apache look for an index.php file first. This should be done by changing the position of index.php in directory configuration file.
+    (ii) Restart the apache web server using the following command:
+        sudo systemctl restart apache2
+
+
+ PHP Processing on Web Server:
+ The directory is located at /var/www/html/. Create the file at that location by running the command:
+      sudo nano /var/www/html/mysimplewebcalculator1.php , Here mysimplecalculator1.php is my file which contains php code for developing simple calculator which is redirected to other page with the address: http://ec2-18-216-169-172.us-east-2.compute.amazonaws.com/mysimplewebcalculator.php which contains html and css implementation.
+      
+The address for the website with http is : http://ec2-18-216-169-172.us-east-2.compute.amazonaws.com/mysimplewebcalculator1.php 
+
+
+Enabling HTTPS:
+
+
+The steps followed to enable PHP are as follows:
+  (i)Creating a self-signed key and certificate pair with OpenSSL using the command:
+    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/apache-selfsigned.key -out /etc/ssl/certs/apache-selfsigned.crt
+    
+(ii)Creating an Apache Configuration Snippet with Strong Encryption Settings
+      sudo nano /etc/apache2/conf-available/ssl-params.conf
+Modifying the Default Apache SSL Virtual Host File
+      sudo cp /etc/apache2/sites-available/default-ssl.conf /etc/apache2/sites-available/default-ssl.conf.bak
+open the SSL Virtual Host file to make adjustments:
+      sudo nano /etc/apache2/sites-available/default-ssl.conf
+     ServerAdmin gogineaa@mail.uc.edu
+     ServerName ec2-18-216-169-172.us-east-2.compute.amazonaws.com
+     
+     SSLCertificateFile      /etc/ssl/certs/apache-selfsigned.crt
+     SSLCertificateKeyFile /etc/ssl/private/apache-selfsigned.key
+     
+ Modifying the HTTP Host File to Redirect to HTTPS
+    sudo nano /etc/apache2/sites-available/000-default.conf
+    
+           Redirect "/" "https://ec2-18-216-169-172.us-east-2.compute.amazonaws.com/"
+   
+   (iii)Adjusting the Firewall
+   Adjust the settings of ufw to allow for SSL traffic.
+           sudo ufw status
+   To additionally let in HTTPS traffic, we can allow the "Apache Full" profile and then delete the redundant "Apache" profile allowance:
+   sudo ufw allow 'Apache Full'
+   sudo ufw delete allow 'Apache
+   
+   (iv) Enabaling Changes in Apache
+  we've made our changes and adjusted our firewall, we can enable the SSL and headers modules in Apache, enable our SSL-ready Virtual Host, and restart Apache.
+
+
+sudo a2enmod ssl
+sudo a2enmod headers
+Next, we can enable our SSL Virtual Host with the a2ensite command:
+
+
+sudo a2ensite default-sslWe will also need to enable our ssl-params.conf file, to read in the values we set:
+
+
+sudo a2enconf ssl-params
+At this point, our site and the necessary modules are enabled. We should check to make sure that there are no syntax errors in our files. We can do this by typing:
+
+
+sudo apache2ctl configtest
+
+
+O/P: Syntax OK
+
+
+If your output has Syntax OK in it, your configuration file has no syntax errors. We can safely restart Apache to implement our changes:
+
+
+sudo systemctl restart apache2
+
+
+(v) Testing Encryption
+
+
+https://ec2-18-216-169-172.us-east-2.compute.amazonaws.com
+
+
+Next, Click "ADVANCED" and then the link provided to proceed to your host anyways:
+ and check Apache redirected from HTTP to HTTPS and whether redirect functions work properly with the following address:
+ http://ec2-18-216-169-172.us-east-2.compute.amazonaws.com
+
+
+ (vi)Changing to a Permanent Redirect
+ Modify the unencrypted Apache Virtual Host again to make the redirect permanent
+ Open your server block configuration file again:
+    Find the Redirect line we added earlier. Add permanent to that line, which changes the redirect from a 302 temporary redirect to a 301 permanent redirect.
+    Check your configuration for syntax errors.
+    Restart Apache to make the redirect permanent:
+        sudo systemctl restart apache2
+        
+Finally, the address for the web app is :
+https://ec2-18-216-169-172.us-east-2.compute.amazonaws.com/mysimplewebcalculator1.php
